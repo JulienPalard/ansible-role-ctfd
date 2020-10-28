@@ -1,0 +1,5 @@
+---
+
+owner: ctfd
+version: master
+home: "/opt/{{ owner }}"

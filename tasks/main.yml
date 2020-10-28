@@ -1,0 +1,60 @@
+---
+
+
+- name: Create user
+  user:
+    name: "{{ owner }}"
+    system: true
+    home: "{{ home }}"
+
+- name: Clone ctfd
+  git:
+    repo: https://github.com/CTFd/CTFd
+    dest: "{{ home }}/CTFd/"
+  become: true
+  become_user: "{{ owner }}"
+
+- name: Drop secret key
+  copy:
+    content: "{{ secret_key }}"
+    dest: "{{ home }}/CTFd/.ctfd_secret_key"
+
+- name: Configure nginx
+  template:
+    src: nginx.conf
+    dest: "/etc/nginx/conf.d/{{ domain }}.conf"
+  notify: reload nginx
+
+- name: Install requirements
+  pip:
+    requirements: "{{ home }}/CTFd/requirements.txt"
+    virtualenv_command: "/usr/bin/python3 -m venv"
+    virtualenv: "{{ home }}/venv/"
+  become: true
+  become_user: "{{ owner }}"
+
+- name: Configure systemd
+  copy:
+    dest: "/etc/systemd/system/{{ domain }}.service"
+    content: |
+      [Unit]
+      Description=CTFd ({{ domain }})
+      After=network.target
+
+      [Service]
+      PIDFile={{ home }}/gunicorn.pid
+      User={{ owner }}
+      Group={{ owner }}
+      RuntimeDirectory=pasteque
+      WorkingDirectory={{ home }}/CTFd/
+      ExecStart={{ home }}/venv/bin/gunicorn --worker-class gevent -w2 -t 120 --pid {{ home }}/gunicorn.pid \
+                --bind unix:{{ home }}/ctfd.sock wsgi:app
+      ExecReload=/bin/kill -s HUP $MAINPID
+      ExecStop=/bin/kill -s TERM $MAINPID
+      PrivateTmp=true
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Start CTFd
+  service: name="{{ domain }}" enabled=yes state=started daemon_reload=yes

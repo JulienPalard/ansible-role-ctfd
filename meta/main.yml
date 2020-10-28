@@ -1,0 +1,15 @@
+---
+
+dependencies:
+  - role: julienpalard.nginx_letsencrypt
+    vars:
+      letsencrypt_certificates: [["{{ domain }}"]]
+
+galaxy_info:
+  role_name: ctfd
+  author: Julien Palard
+  description: Setup a CTFd
+  issue_tracker_url: https://github.com/JulienPalard/ansible-ctfd
+  license: MIT
+  min_ansible_version: 2.9
+  galaxy_tags: [web]
